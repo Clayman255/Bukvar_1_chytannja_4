@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра: Буква заблукала</title>
+  <style>
+    :root{
+      --bg:#f0f8ff;
+      --card:#fff;
+      --text:#2c3e50;
+      --line:rgba(44,62,80,.12);
+      --shadow:rgba(0,0,0,.10);
+      --accent:#ffd84d;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --blue:#3498db;
+      --blue2:#2980b9;
+    }
+
+    body{
+      font-family: Arial, sans-serif;
+      background-color: var(--bg);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding: 20px;
+      color:var(--text);
+      margin:0;
+    }
+
+    h1{ margin:0 0 12px; }
+
+    /* верхня панель */
+    .topbar{
+      width:100%;
+      max-width: 1200px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+      background:var(--card);
+      border:1px solid var(--line);
+      box-shadow:0 6px 18px rgba(0,0,0,.06);
+      padding:10px 14px;
+      border-radius:16px;
+      margin-bottom:14px;
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+    }
+
+    .snd{
+      border:0;
+      background:var(--accent);
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      box-shadow:0 4px 10px var(--shadow);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      flex:0 0 auto;
+    }
+    .snd:active{ transform:scale(.98); }
+
+    .instruction{
+      font-size: 20px;
+      font-weight: 800;
+      text-align:center;
+    }
+
+    /* кнопки після перемоги */
+    .afterWin{
+      display:none;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-left: 20px;
+      padding-left: 20px;
+      border-left: 2px solid #eee;
+    }
+
+    .winBadge{
+      border:0;
+      background:rgba(34,197,94,.12);
+      border:2px solid rgba(34,197,94,.35);
+      color:var(--good);
+      padding:10px 14px;
+      border-radius:14px;
+      font-weight:900;
+      font-size:18px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      cursor:default;
+      animation: pop 0.5s ease-out;
+    }
+
+    .againBtn{
+      border:0;
+      background:var(--good);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:14px;
+      font-weight:900;
+      font-size:18px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      box-shadow:0 10px 22px rgba(34,197,94,.25);
+      animation: pop 0.6s ease-out;
+    }
+    .againBtn:active{ transform:scale(.98); }
+
+    /* Підписи стовпців */
+    .headers{
+      display:grid;
+      grid-template-columns: 1fr 1fr; 
+      width: 100%;
+      max-width: 1200px;
+      margin: 8px 0 10px;
+      font-weight: bold;
+      font-size: 18px;
+      color: #7f8c8d;
+    }
+    .headers div:first-child { text-align: right; padding-right: 40px; }
+    .headers div:last-child { text-align: left; padding-left: 20px; }
+
+    /* контейнер рядків */
+    .game-container{
+      display:flex;
+      flex-direction:column;
+      gap: 16px;
+      width:100%;
+      max-width: 1200px;
+    }
+
+    .task-row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      align-items: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+    }
+
+    .drop-zone-area{
+      display:flex;
+      justify-content:flex-end;
+      gap: 8px;
+      padding-right: 20px;
+      border-right: 2px solid #eee;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      min-height: 60px;
+      align-items: center;
+    }
+
+    .letters-area{
+      display:flex;
+      justify-content:flex-start;
+      gap: 10px;
+      flex-wrap: nowrap;
+      overflow-x: auto; 
+      min-height: 60px;
+      align-items: center;
+      padding-bottom: 5px;
+    }
+
+    .letter-box{
+      width: 50px;
+      height: 50px;
+      flex-shrink: 0;
+      background-color: var(--blue);
+      color: white;
+      font-size: 28px;
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor: grab;
+      border-radius: 8px;
+      user-select:none;
+      box-shadow:0 4px var(--blue2);
+      transition: transform .1s;
+      touch-action:none;
+    }
+
+    .letter-box:active{
+      transform: scale(0.95);
+      box-shadow:0 2px var(--blue2);
+      cursor: grabbing;
+    }
+
+    .letter-box.used{
+      background: rgba(34,197,94,.55);
+      box-shadow:none;
+      cursor: default;
+    }
+
+    .slot{
+      width: 50px;
+      height: 50px;
+      flex-shrink: 0;
+      background-color: #ecf0f1;
+      border: 3px dashed #bdc3c7;
+      border-radius: 8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition: .15s;
+    }
+    .slot.over{
+      border-color: rgba(34,197,94,.65);
+      background: rgba(34,197,94,.10);
+    }
+    .slot.locked{
+      border-style: solid;
+      border-color: rgba(34,197,94,.65);
+      background: rgba(34,197,94,.10);
+    }
+
+    .correct-row .slot{
+      border-color: #27ae60;
+      background-color: #eafaf1;
+      border-style:solid;
+    }
+
+    @keyframes pop{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(1.12); }
+      100%{ transform:scale(1); }
+    }
+    .success-anim{ animation: pop .3s ease-in-out; }
+
+    @keyframes shake{
+      0%,100%{ transform:translateX(0); }
+      25%{ transform:translateX(-7px); }
+      75%{ transform:translateX(7px); }
+    }
+    .fail-anim{ animation: shake .25s ease-in-out; border-color: rgba(239,68,68,.8); }
+
+    /* Мобільна адаптація */
+    @media (max-width: 850px){
+      .task-row{ gap:16px; grid-template-columns: 1fr; }
+      .drop-zone-area{ justify-content:center; border-right:0; padding-right:0; border-bottom:2px solid #eee; padding-bottom:12px; }
+      .letters-area { justify-content: center; }
+      .headers{ display:none; }
+      .afterWin { border-left: none; margin-left: 0; margin-top: 10px; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Буква заблукала</h1>
+
+  <div class="topbar">
+    <button class="snd" id="btnSound" type="button" title="Прослухати">🔊</button>
+    <div class="instruction">Впорядкуй букви, щоб утворилися слова.</div>
+
+    <div class="afterWin" id="afterWin">
+      <div class="winBadge">🎉 Ура! Все вдалося.</div>
+      <button class="againBtn" id="btnAgain" type="button">🔁 Ще раз</button>
+    </div>
+  </div>
+
+  <div class="headers">
+    <div>Місце для слова</div>
+    <div>Букви</div>
+  </div>
+
+  <div id="game-board" class="game-container"></div>
+
+  <audio id="au" src="au.mp3"></audio>
+  
+  <audio id="ok" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+  <audio id="no" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+  <script>
+    // Масив рівнів (порядок букв фіксований)
+    const levels = [
+      { id: 1, correct: "САД",      scrambled: ["А","С","Д"] },
+      { id: 2, correct: "ВОДА",     scrambled: ["В","О","А","Д"] },
+      { id: 3, correct: "ПРЕДМЕТ",  scrambled: ["П","Р","Е","Д","Е","М","Т"] },
+      { id: 4, correct: "ЛІД",      scrambled: ["Л","Д","І"] },
+      { id: 5, correct: "ДОМІНО",   scrambled: ["О","Д","М","І","Н","О"] },
+      { id: 6, correct: "КРОКОДИЛ", scrambled: ["К","Р","О","К","О","Л","И","Д"] },
+      { id: 7, correct: "МЕД",      scrambled: ["Д","Е","М"] },
+      { id: 8, correct: "СОДА",     scrambled: ["С","О","А","Д"] },
+      { id: 9, correct: "ДИКТОР",   scrambled: ["И","Д","К","Т","О","Р"] }
+    ];
+
+    const gameBoard = document.getElementById("game-board");
+    const afterWin = document.getElementById("afterWin");
+    const btnAgain = document.getElementById("btnAgain");
+    const btnSound = document.getElementById("btnSound");
+
+    // Отримуємо елемент аудіо за id="au"
+    const au = document.getElementById("au");
+    const ok = document.getElementById("ok");
+    const no = document.getElementById("no");
+
+    let draggedItem = null;
+
+    function stopAll(){
+      document.querySelectorAll("audio").forEach(a => { try{ a.pause(); a.currentTime=0; }catch(e){} });
+    }
+    
+    function playAudio(a){
+      if(!a) return;
+      stopAll();
+      a.currentTime = 0;
+      a.play().catch(()=>{});
+    }
+
+    // При натисканні на кнопку запускаємо змінну au
+    btnSound.addEventListener("click", ()=> playAudio(au));
+
+    function initGame(){
+      afterWin.style.display = "none";
+      gameBoard.innerHTML = "";
+
+      levels.forEach((level, index) => {
+        const row = document.createElement("div");
+        row.className = "task-row";
+        row.id = `row-${index}`;
+        row.dataset.rowIndex = index;
+
+        // Ліва частина: слоти
+        const dropZoneArea = document.createElement("div");
+        dropZoneArea.className = "drop-zone-area";
+
+        for(let i=0;i<level.correct.length;i++){
+          const slot = document.createElement("div");
+          slot.className = "slot";
+          slot.dataset.expected = level.correct[i];
+          slot.dataset.rowIndex = index; 
+          
+          slot.addEventListener("dragover", handleDragOver);
+          slot.addEventListener("drop", handleDrop);
+          slot.addEventListener("dragenter", handleDragEnter);
+          slot.addEventListener("dragleave", handleDragLeave);
+
+          dropZoneArea.appendChild(slot);
+        }
+
+        // Права частина: букви
+        const lettersArea = document.createElement("div");
+        lettersArea.className = "letters-area";
+        lettersArea.id = `origin-${index}`;
+
+        lettersArea.addEventListener("dragover", handleDragOver);
+        lettersArea.addEventListener("drop", handleReturnDrop);
+
+        // Букви додаємо без перемішування
+        level.scrambled.forEach((ch, charIndex)=>{
+          const letter = document.createElement("div");
+          letter.className = "letter-box";
+          letter.draggable = true;
+          letter.textContent = ch;
+          letter.id = `l-${index}-${charIndex}`;
+          letter.dataset.origin = `origin-${index}`;
+          letter.dataset.rowIndex = index; 
+          
+          letter.addEventListener("dragstart", handleDragStart);
+          lettersArea.appendChild(letter);
+        });
+
+        row.appendChild(dropZoneArea);
+        row.appendChild(lettersArea);
+        gameBoard.appendChild(row);
+      });
+    }
+
+    function handleDragStart(e){
+      draggedItem = this;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", this.id);
+      setTimeout(()=> this.style.opacity = "0.5", 0);
+    }
+
+    function handleDragOver(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    }
+
+    function handleDragEnter(e){
+      e.preventDefault();
+      if(this.classList.contains("slot") && !this.hasChildNodes() && !this.classList.contains("locked")){
+        this.classList.add("over");
+      }
+    }
+
+    function handleDragLeave(e){
+      if(this.classList.contains("slot")){
+        this.classList.remove("over");
+      }
+    }
+
+    function handleDrop(e){
+      e.preventDefault();
+      this.classList.remove("over");
+
+      if(!draggedItem) return;
+      if(this.classList.contains("locked")) { resetDrag(); return; }
+      if(!this.classList.contains("slot")) { resetDrag(); return; }
+      if(this.hasChildNodes()) { resetDrag(); return; }
+
+      // Перевірка: чи належить буква цьому рядку?
+      const itemRow = draggedItem.dataset.rowIndex;
+      const slotRow = this.dataset.rowIndex;
+
+      if(itemRow !== slotRow){
+        playAudio(no);
+        this.classList.add("fail-anim");
+        setTimeout(()=> this.classList.remove("fail-anim"), 260);
+        returnToOrigin(draggedItem);
+        return;
+      }
+
+      // Перевірка: чи правильна буква
+      const expected = this.dataset.expected;
+      const got = draggedItem.textContent;
+
+      if(got !== expected){
+        playAudio(no);
+        this.classList.add("fail-anim");
+        setTimeout(()=> this.classList.remove("fail-anim"), 260);
+        returnToOrigin(draggedItem);
+        return;
+      }
+
+      this.appendChild(draggedItem);
+      draggedItem.style.opacity = "1";
+      this.classList.add("locked");
+
+      playAudio(ok);
+      draggedItem.classList.add("success-anim");
+      setTimeout(()=> draggedItem.classList.remove("success-anim"), 320);
+
+      draggedItem.draggable = false;
+      draggedItem.classList.add("used");
+      draggedItem = null;
+
+      const row = this.closest(".task-row");
+      checkRow(row);
+      checkAllWin(); 
+    }
+
+    function handleReturnDrop(e){
+      e.preventDefault();
+      if(!draggedItem) return;
+      if(draggedItem.classList.contains("used")){ resetDrag(); return; }
+      returnToOrigin(draggedItem);
+    }
+
+    function returnToOrigin(item){
+       const originId = item.dataset.origin;
+       const origin = document.getElementById(originId);
+       if(origin) origin.appendChild(item);
+       resetDrag();
+    }
+
+    function resetDrag(){
+      if(draggedItem){ draggedItem.style.opacity = "1"; }
+      draggedItem = null;
+    }
+
+    function checkRow(row){
+      const slots = row.querySelectorAll(".slot");
+      let current = "";
+      let full = true;
+      slots.forEach(s=>{
+        if(s.children.length){ current += s.children[0].textContent; }
+        else{ full = false; }
+      });
+      const idx = parseInt(row.id.split("-")[1], 10);
+      const correct = levels[idx].correct;
+      if(full && current === correct){
+        row.classList.add("correct-row");
+      }
+    }
+
+    function checkAllWin(){
+      const allSlots = document.querySelectorAll(".slot");
+      const locked = document.querySelectorAll(".slot.locked").length;
+
+      if(allSlots.length > 0 && locked === allSlots.length){
+        afterWin.style.display = "flex";
+        playAudio(ok);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    btnAgain.addEventListener("click", initGame);
+    document.addEventListener("dragend", ()=> resetDrag());
+
+    initGame();
+  </script>
+</body>
+</html>

@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Встанови відповідність</title>
+
+  <style>
+    :root {
+      --bg: #fbf6ee;
+      --accent: #4da6ff;
+      --bad: #ef4444;
+      --text-main: #2c3e50;
+    }
+
+    body {
+      margin: 0;
+      /* ЗАВДАННЯ: Шрифт Arial для всього документу */
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #2980b9; margin: 0 0 10px 0; }
+
+    .task-desc {
+      font-size: 1.2rem;
+      background: #fff;
+      padding: 10px 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: inline-block;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    button.tool-btn {
+      border: 0;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      font-size: 20px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s;
+      font-family: Arial, Helvetica, sans-serif; /* Дублюємо шрифт для кнопок */
+    }
+    button.tool-btn:active { transform: scale(0.95); }
+
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1200px; /* Збільшив ширину контейнера, щоб вмістити більші картинки */
+    }
+
+    #line-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .game-container {
+      display: grid;
+      /* ТРИ КОЛОНКИ: Картинки (авто) - Слова (гнучко) - Картинки (авто) */
+      grid-template-columns: auto 1fr auto;
+      gap: 40px;
+      z-index: 6;
+      position: relative;
+      align-items: center;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      border: 3px solid transparent;
+      user-select: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: fit-content;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .item:hover { transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0,0,0,0.15); }
+
+    .item-word {
+      font-size: 24px;
+      font-weight: bold;
+      min-height: 50px;
+      padding: 10px 30px; 
+      width: auto;
+      min-width: 120px;
+    }
+
+    /* ЗАВДАННЯ: Збільшити зображення на 30% (було 150px -> стало 200px для надійності) */
+    .item-image img {
+      width: 100%;
+      max-width: 200px; 
+      height: auto;
+      display: block;
+      pointer-events: none;
+      border-radius: 8px;
+    }
+
+    .item.selected { border-color: var(--accent); background: #e0f2fe; }
+    .item.error { border-color: var(--bad); animation: shake 0.4s; }
+    .item.matched { opacity: 0.6; cursor: default; border-color: #22c55e; background: #f0fdf4; }
+
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-6px)}
+      75%{transform:translateX(6px)}
+    }
+
+    .win-message {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .win-message div {
+      background: #fff;
+      padding: 30px 50px;
+      border-radius: 20px;
+      font-size: 2rem;
+      color: #16a34a;
+      font-weight: bold;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Встанови відповідність</h1>
+  <div class="task-desc">
+    Встанови відповідність між словом та зображенням.
+  </div>
+</header>
+
+<div class="toolbar">
+  <button id="btnSound" class="tool-btn" title="Прослухати завдання">🔊</button>
+  <button id="btnReset" class="tool-btn" title="Почати знову">🔄</button>
+</div>
+
+<div class="game-wrapper">
+  <svg id="line-canvas" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke"></polygon>
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="game-container">
+    <div class="column" id="col-left"></div>
+    <div class="column" id="col-center"></div>
+    <div class="column" id="col-right"></div>
+  </div>
+</div>
+
+<div id="winMsg" class="win-message">
+  <div>Молодець! 🎉</div>
+</div>
+
+<audio id="audioTask" src="au.mp3"></audio>
+<audio id="soundCorrect" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+<audio id="soundWrong" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+<script>
+  const pairsData = [
+    { id: 1, word: 'гамак', image: '1.png' },
+    { id: 2, word: 'гарбуз', image: '2.png' },
+    { id: 3, word: 'голуб', image: '3.png' },
+    { id: 4, word: 'гребінець', image: '4.png' },
+    { id: 5, word: 'гриби', image: '5.png' },
+    { id: 6, word: 'гуска', image: '6.png' }
+  ];
+
+  const colors = ['#4da6ff','#22c55e','#a855f7','#f59e0b','#06b6d4', '#ef4444'];
+
+  const colLeft = document.getElementById('col-left');
+  const colCenter = document.getElementById('col-center');
+  const colRight = document.getElementById('col-right');
+  const canvas = document.getElementById('line-canvas');
+  const winMsg = document.getElementById('winMsg');
+
+  let selectedWord = null;
+  let matched = 0;
+
+  function initGame() {
+    colLeft.innerHTML = '';
+    colCenter.innerHTML = '';
+    colRight.innerHTML = '';
+
+    const defs = canvas.querySelector('defs');
+    canvas.innerHTML = '';
+    if (defs) canvas.appendChild(defs);
+
+    matched = 0;
+    selectedWord = null;
+    winMsg.style.display = 'none';
+
+    // 1. Зображення (ліворуч і праворуч)
+    const shuffledImages = [...pairsData].sort(() => Math.random() - 0.5);
+    const half = Math.ceil(shuffledImages.length / 2);
+    const leftImages = shuffledImages.slice(0, half);
+    const rightImages = shuffledImages.slice(half);
+
+    leftImages.forEach(p => createImgItem(p, colLeft));
+    rightImages.forEach(p => createImgItem(p, colRight));
+
+    // 2. Слова (центр)
+    [...pairsData].sort(() => Math.random() - 0.5).forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'item item-word';
+      d.dataset.id = p.id;
+      d.dataset.color = colors[p.id - 1];
+      d.textContent = p.word;
+      d.onclick = () => selectWord(d);
+      colCenter.appendChild(d);
+    });
+  }
+
+  function createImgItem(data, container) {
+    const d = document.createElement('div');
+    d.className = 'item item-image';
+    d.dataset.id = data.id;
+    d.innerHTML = `<img src="${data.image}" alt="${data.word}">`;
+    d.onclick = () => selectImage(d);
+    container.appendChild(d);
+  }
+
+  function selectWord(el) {
+    if (el.classList.contains('matched')) return;
+    document.querySelectorAll('.item-word').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedWord = el;
+  }
+
+  function selectImage(el) {
+    if (!selectedWord || el.classList.contains('matched')) return;
+
+    if (el.dataset.id === selectedWord.dataset.id) {
+      drawArrow(selectedWord, el, selectedWord.dataset.color);
+
+      selectedWord.classList.remove('selected');
+      selectedWord.classList.add('matched');
+      el.classList.add('matched');
+
+      selectedWord.onclick = null;
+      el.onclick = null;
+
+      selectedWord = null;
+      matched++;
+
+      document.getElementById('soundCorrect').play();
+
+      if (matched === pairsData.length) {
+        winMsg.style.display = 'flex';
+        setTimeout(() => winMsg.style.display = 'none', 3000);
+      }
+    } else {
+      el.classList.add('error');
+      document.getElementById('soundWrong').play();
+      setTimeout(() => el.classList.remove('error'), 400);
+    }
+  }
+
+  function drawArrow(wordEl, imgEl, color) {
+    const wRect = wordEl.getBoundingClientRect(); 
+    const iRect = imgEl.getBoundingClientRect();  
+    const wrap = document.querySelector('.game-wrapper').getBoundingClientRect();
+
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    
+    const y1 = wRect.top + wRect.height / 2 - wrap.top;
+    const y2 = iRect.top + iRect.height / 2 - wrap.top;
+    let x1, x2;
+
+    if (iRect.left < wRect.left) {
+      x1 = wRect.left - wrap.left;
+      x2 = iRect.right - wrap.left;
+    } else {
+      x1 = wRect.right - wrap.left;
+      x2 = iRect.left - wrap.left;
+    }
+
+    l.setAttribute('x1', x1);
+    l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2);
+    l.setAttribute('y2', y2);
+    
+    l.setAttribute('stroke', color);
+    l.setAttribute('stroke-width', '4');
+    l.setAttribute('marker-end', 'url(#arrowhead)');
+    canvas.appendChild(l);
+  }
+
+  document.getElementById('btnReset').onclick = initGame;
+  document.getElementById('btnSound').onclick = () => {
+    const a = document.getElementById('audioTask');
+    a.currentTime = 0;
+    a.play();
+  };
+
+  initGame();
+</script>
+</body>
+</html>

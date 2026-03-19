@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Встав букву</title>
+  <style>
+    :root{
+      --bg:#fbf6ee;
+      --card:#fff;
+      --accent:#ffd84d;
+      --shadow:rgba(0,0,0,.10);
+      --text:#2c3e50;
+      --line:rgba(44,62,80,.12);
+      --good:#22c55e;
+      --bad:#ef4444;
+    }
+
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:14px;
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:2.09rem; /* -5% */
+      font-weight:900;
+      text-align:center;
+    }
+
+    .task{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      background:var(--card);
+      border:1px solid var(--line);
+      box-shadow:0 6px 18px rgba(0,0,0,.06);
+      padding:10px 14px;
+      border-radius:16px;
+      max-width:1200px;
+      width:100%;
+      margin-bottom:14px;
+      font-size:1.2825rem; /* -5% */
+      font-weight:800;
+      text-align:center;
+      
+      /* Sticky header */
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .snd{
+      border:0;
+      background:var(--accent);
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      box-shadow:0 4px 10px var(--shadow);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:17.1px; /* -5% */
+      flex:0 0 auto;
+    }
+    .snd:active{transform:scale(.98)}
+
+    .again{
+      border:0;
+      background:rgba(34,197,94,.12);
+      color:var(--text);
+      border:2px solid rgba(34,197,94,.35);
+      padding:8px 12px;
+      border-radius:14px;
+      font-family: Arial, sans-serif;
+      font-weight:900;
+      font-size:1.14rem;
+      cursor:pointer;
+      display:none;
+      white-space:nowrap;
+    }
+    .again:active{transform:scale(.98)}
+
+    .doneText{
+      display:none;
+      font-weight:900;
+      color:var(--good);
+      font-size:1.14rem;
+      white-space:nowrap;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:1200px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+
+    @media (min-width: 980px){
+      .wrap{
+        grid-template-columns: 1.25fr .75fr;
+        align-items:start;
+      }
+    }
+
+    /* LEFT: WORDS */
+    .words{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 10px 24px rgba(0,0,0,.08);
+      padding:14px;
+      display:grid;
+      gap:14px;
+    }
+
+    .wordRow{
+      background:#fff;
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:18px;
+      box-shadow:0 6px 16px rgba(0,0,0,.06);
+      padding:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:nowrap; 
+      overflow-x: auto;
+    }
+
+    .cells{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex-wrap:nowrap; 
+    }
+
+    .cell{
+      width:44px; 
+      height:44px;
+      border-radius:10px;
+      background:#fff;
+      border:2px solid rgba(0,0,0,.10);
+      box-shadow:0 4px 10px rgba(0,0,0,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      /* Font size increased */
+      font-size:2.1rem; 
+      font-weight:900;
+      user-select:none;
+      flex: 0 0 auto;
+    }
+
+    .drop{
+      border-style:dashed;
+      background:rgba(255,216,77,.12);
+      transition:.2s;
+    }
+    .drop.over{border-color:rgba(34,197,94,.65); background:rgba(34,197,94,.10);}
+    .drop.locked{border-style:solid; border-color:rgba(34,197,94,.65); background:rgba(34,197,94,.10);}
+
+    .placed{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .placed.bad{animation:shake .45s ease-in-out; color:var(--bad)}
+    @keyframes shake{
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-8px)}
+      75%{transform:translateX(8px)}
+    }
+
+    .result{
+      /* Font size increased */
+      font-size:2.1rem;
+      font-weight:900;
+      letter-spacing:.5px;
+      padding:4px 8px;
+      border-radius:10px;
+      background:#fff;
+      border:2px solid var(--good);
+      display:none;
+      white-space:nowrap;
+    }
+
+    /* RIGHT: LETTERS (2 columns) */
+    .letters{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 10px 24px rgba(0,0,0,.08);
+      padding:14px;
+      position: sticky;
+      top: 80px; 
+    }
+
+    .lettersGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      justify-items:center;
+      align-items:start;
+    }
+
+    .colTitle{
+      width:100%;
+      text-align:center;
+      font-weight:900;
+      font-size:1.0925rem;
+      opacity:.85;
+      margin-bottom:4px;
+    }
+
+    .tile{
+      width:64px;
+      height:54px;
+      border-radius:12px;
+      background:#fff;
+      border:2px solid rgba(0,0,0,.10);
+      box-shadow:0 6px 14px rgba(0,0,0,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      /* Font size increased */
+      font-size:2.6rem;
+      font-weight:900;
+      cursor:grab;
+      user-select:none;
+      transition:transform .15s;
+    }
+    .tile:active{cursor:grabbing; transform:scale(.98)}
+    .tile.used{opacity:.18; filter:grayscale(1); cursor:default; box-shadow:none; transform:none;}
+
+    .win{
+      display:none !important;
+    }
+
+    @media (max-width: 520px){
+      .task{font-size:1.0925rem}
+      .cell{width:36px;height:36px; font-size:1.8rem} 
+      .tile{width:56px;height:48px; font-size:2.3rem} 
+      .result{font-size:1.9rem}
+      .again{font-size:1.05rem}
+      .doneText{font-size:1.05rem}
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Встав букву</h1>
+
+  <div class="task">
+    <button class="snd" data-a="au" title="🔊">🔊</button>
+
+    <button class="again" id="btnAgain" type="button" title="Почати гру спочатку">Ще раз</button>
+    <span class="doneText" id="doneText">Молодець! Все вдалося! 🎉✨</span>
+
+    <span>Встав пропущену букву "Х" або "х".</span>
+  </div>
+
+  <div class="wrap">
+    <section class="words" id="words"></section>
+
+    <aside class="letters">
+      <div class="lettersGrid" id="lettersGrid"></div>
+    </aside>
+  </div>
+
+  <audio id="au" src="au.mp3"></audio>
+  <audio id="ok" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+  <audio id="no" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+<script>
+  // WORDS (left). Each item: cells (letters without the missing one), missing position index, correct letter.
+  const words = [
+    // 1. (х)міль
+    { id: 1, cells: [], missAt: 0, answer: "х", final: "хміль", tail: "м і л ь" },
+    // 2. смі(х)
+    { id: 2, cells: ["с", "м", "і"], missAt: 3, answer: "х", final: "сміх" },
+    // 3. (х)ата
+    { id: 3, cells: [], missAt: 0, answer: "х", final: "хата", tail: "а т а" },
+    // 4. (х)ліб
+    { id: 4, cells: [], missAt: 0, answer: "х", final: "хліб", tail: "л і б" },
+    // 5. Христина (Х)
+    { id: 5, cells: [], missAt: 0, answer: "Х", final: "Христина", tail: "р и с т и н а" },
+    // 6. по(х)ід
+    { id: 6, cells: ["п", "о"], missAt: 2, answer: "х", final: "похід", tail: "і д" },
+    // 7. (х)рін
+    { id: 7, cells: [], missAt: 0, answer: "х", final: "хрін", tail: "р і н" },
+    // 8. (х)оврах
+    { id: 8, cells: [], missAt: 0, answer: "х", final: "ховрах", tail: "о в р а х" },
+    // 9. (Х)орив
+    { id: 9, cells: [], missAt: 0, answer: "Х", final: "Хорив", tail: "о р и в" },
+    // 10. (Х)арків
+    { id: 10, cells: [], missAt: 0, answer: "Х", final: "Харків", tail: "а р к і в" },
+  ];
+
+  // LETTERS (right): 3 big X and 7 small x
+  const lettersPool = [
+    { id: "X1", ch: "Х" }, { id: "X2", ch: "Х" }, { id: "X3", ch: "Х" },
+    { id: "x1", ch: "х" }, { id: "x2", ch: "х" }, { id: "x3", ch: "х" }, 
+    { id: "x4", ch: "х" }, { id: "x5", ch: "х" }, { id: "x6", ch: "х" }, { id: "x7", ch: "х" },
+  ];
+
+  const $words = document.getElementById("words");
+  const $lettersGrid = document.getElementById("lettersGrid");
+  const ok = document.getElementById("ok");
+  const no = document.getElementById("no");
+
+  const $btnAgain = document.getElementById("btnAgain");
+  const $doneText = document.getElementById("doneText");
+
+  const placed = new Map(); // wordId -> { ch, letterId }
+  const used = new Set();   // letterId
+
+  const shuffle = a => [...a].sort(()=>0.5 - Math.random());
+
+  function stopAll(){
+    document.querySelectorAll("audio").forEach(a=>{ try{ a.pause(); a.currentTime=0; }catch(e){} });
+  }
+  function play(id){
+    const a = document.getElementById(id);
+    if(!a) return;
+    stopAll();
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  }
+  document.addEventListener("click",(e)=>{
+    const btn = e.target.closest("[data-a]");
+    if(!btn) return;
+    play(btn.dataset.a);
+  });
+
+  // ЗМІНА: Кнопка перезапускає гру
+  $btnAgain.addEventListener("click", init);
+
+  function init(){
+    placed.clear(); used.clear();
+    
+    $btnAgain.style.display = "none";
+    $doneText.style.display = "none";
+
+    $words.innerHTML = "";
+    $lettersGrid.innerHTML = "";
+
+    // --- render words ---
+    words.forEach(w=>{
+      const row = document.createElement("div");
+      row.className = "wordRow";
+      row.dataset.wordId = w.id;
+
+      const cellsWrap = document.createElement("div");
+      cellsWrap.className = "cells";
+
+      const leftLetters = [...(w.cells || [])];
+      const tailLetters = w.tail ? w.tail.split(" ").filter(Boolean) : [];
+
+      const allBefore = [];
+      const allAfter = [];
+
+      leftLetters.forEach(ch => allBefore.push({type:"letter", ch}));
+      allBefore.push({type:"drop"});
+      tailLetters.forEach(ch => allBefore.push({type:"letter", ch}));
+
+      allBefore.forEach((item)=>{
+        if(item.type === "letter"){
+          const c = document.createElement("div");
+          c.className = "cell";
+          c.textContent = item.ch;
+          cellsWrap.appendChild(c);
+        } else {
+          const z = document.createElement("div");
+          z.className = "cell drop";
+          z.dataset.word = w.id;
+          cellsWrap.appendChild(z);
+        }
+      });
+
+      const res = document.createElement("div");
+      res.className = "result";
+      res.textContent = w.final;
+
+      row.appendChild(cellsWrap);
+      row.appendChild(res);
+
+      $words.appendChild(row);
+    });
+
+    // --- render letters (two columns) ---
+    const big = shuffle(lettersPool.filter(x=>x.ch==="Х"));
+    const small = shuffle(lettersPool.filter(x=>x.ch==="х"));
+    const rows = Math.max(big.length, small.length);
+
+    // headers
+    const h1 = document.createElement("div");
+    h1.className = "colTitle";
+    h1.textContent = "Х";
+    const h2 = document.createElement("div");
+    h2.className = "colTitle";
+    h2.textContent = "х";
+    $lettersGrid.appendChild(h1);
+    $lettersGrid.appendChild(h2);
+
+    for(let i=0;i<rows;i++){
+      $lettersGrid.appendChild(big[i] ? makeTile(big[i]) : spacer());
+      $lettersGrid.appendChild(small[i] ? makeTile(small[i]) : spacer());
+    }
+
+    document.querySelectorAll(".drop").forEach(zone=>{
+      zone.addEventListener("dragover",(e)=>{
+        e.preventDefault();
+        if(zone.classList.contains("locked")) return;
+        zone.classList.add("over");
+      });
+      zone.addEventListener("dragleave",()=>zone.classList.remove("over"));
+      zone.addEventListener("drop",(e)=>{
+        e.preventDefault();
+        zone.classList.remove("over");
+        if(zone.classList.contains("locked")) return;
+
+        const letterId = e.dataTransfer.getData("letterId");
+        const ch = e.dataTransfer.getData("ch");
+        if(!letterId || !ch) return;
+
+        const wordId = Number(zone.dataset.word);
+        dropTo(zone, wordId, letterId, ch);
+      });
+    });
+  }
+
+  function makeTile(l){
+    const el = document.createElement("div");
+    el.className = "tile";
+    el.textContent = l.ch;
+    el.draggable = true;
+    el.dataset.letterId = l.id;
+    el.dataset.ch = l.ch;
+
+    el.addEventListener("dragstart",(e)=>{
+      if(el.classList.contains("used")) return e.preventDefault();
+      e.dataTransfer.setData("letterId", l.id);
+      e.dataTransfer.setData("ch", l.ch);
+    });
+
+    return el;
+  }
+
+  function spacer(){
+    const s = document.createElement("div");
+    s.style.width = "64px";
+    s.style.height = "54px";
+    s.style.opacity = "0";
+    return s;
+  }
+
+  function dropTo(zone, wordId, letterId, ch){
+    if(used.has(letterId)) return;
+
+    const w = words.find(x=>x.id===wordId);
+    if(!w) return;
+
+    if(placed.has(wordId)){
+      const prev = placed.get(wordId);
+      used.delete(prev.letterId);
+      const prevTile = document.querySelector(`.tile[data-letter-id="${cssEscape(prev.letterId)}"]`);
+      if(prevTile) prevTile.classList.remove("used");
+
+      zone.classList.remove("locked");
+      zone.innerHTML = "";
+      const row = document.querySelector(`.wordRow[data-word-id="${cssEscape(wordId)}"]`);
+      row?.querySelector(".result")?.style && (row.querySelector(".result").style.display="none");
+      row?.querySelectorAll(".cell").forEach(c=>{
+        if(c.classList.contains("cell") && !c.classList.contains("drop")) c.style.display="";
+      });
+    }
+
+    zone.innerHTML = "";
+    const p = document.createElement("div");
+    p.className = "placed";
+    p.textContent = ch;
+    zone.appendChild(p);
+
+    used.add(letterId);
+    const tile = document.querySelector(`.tile[data-letter-id="${cssEscape(letterId)}"]`);
+    tile?.classList.add("used");
+
+    placed.set(wordId, { ch, letterId });
+
+    if(ch === w.answer){
+      zone.classList.add("locked");
+      ok.currentTime=0; ok.play().catch(()=>{});
+
+      const row = document.querySelector(`.wordRow[data-word-id="${cssEscape(wordId)}"]`);
+      if(row){
+        row.querySelector(".cells").style.display = "none";
+        const res = row.querySelector(".result");
+        res.style.display = "block";
+      }
+
+      checkWin();
+    }else{
+      p.classList.add("bad");
+      no.currentTime=0; no.play().catch(()=>{});
+      
+      setTimeout(() => {
+        zone.innerHTML = "";
+        if(tile) tile.classList.remove("used");
+        used.delete(letterId);
+        placed.delete(wordId);
+      }, 500);
+    }
+  }
+
+  function checkWin(){
+    const locked = document.querySelectorAll(".drop.locked").length;
+    if(locked === words.length){
+      setTimeout(()=>{
+        $btnAgain.style.display = "inline-flex";
+        $doneText.style.display = "inline";
+      }, 450);
+    }
+  }
+
+  function cssEscape(v){
+    if(window.CSS && CSS.escape) return CSS.escape(String(v));
+    return String(v).replace(/[^a-zA-Z0-9\-_]/g, "\\$&");
+  }
+
+  init();
+</script>
+</body>
+</html>

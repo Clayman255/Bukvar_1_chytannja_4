@@ -1,0 +1,309 @@
+<!doctype html>  
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Склади кошик</title>
+  <style>
+    :root {
+      --bg: #fbf6ee;
+      --card: #ffffff;
+      --accent: #ffd84d;
+      --shadow: rgba(0, 0, 0, .10);
+      --radius: 18px;
+      --bad: #ef4444;
+      --text-main: #2c3e50;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      max-width: 800px;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 2.5rem;
+      color: #d35400;
+    }
+
+    .task-desc {
+      font-size: 1.3rem;
+      font-weight: 500;
+      background: #fff;
+      padding: 10px 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: inline-block;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 28px;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 4px 10px var(--shadow);
+      transition: transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:active { transform: scale(0.95); }
+
+    .game-area {
+      display: grid;
+      grid-template-columns: 1fr 450px;
+      gap: 30px;
+      width: 100%;
+      max-width: 1200px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .game-area { grid-template-columns: 1fr; }
+    }
+
+    .board {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      align-content: flex-start;
+      background: var(--card);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 20px var(--shadow);
+      min-height: 300px;
+    }
+
+    .item {
+      width: 120px;
+      height: 120px;
+      cursor: grab;
+      transition: transform 0.2s, opacity 0.2s;
+      background: #fff;
+      border-radius: 12px;
+      padding: 5px;
+      border: 2px solid transparent;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .item:active { cursor: grabbing; transform: scale(1.05); }
+
+    .item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); border-color: transparent; }
+      25% { transform: translateX(-5px); border-color: var(--bad); }
+      75% { transform: translateX(5px); border-color: var(--bad); }
+    }
+
+    .item.error {
+      animation: shake 0.4s ease-in-out;
+    }
+
+    .basket-zone {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      min-height: 400px;
+    }
+
+    .basket-img {
+      width: 100%;
+      max-width: 420px;
+      z-index: 1;
+      pointer-events: none;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.15));
+    }
+
+    /* ✅ ЗМІНЕНО ТІЛЬКИ ТУТ: фрукти піднято ще вище (ближче до середини кошика) */
+    .collected-items {
+      position: absolute;
+      left: 50%;
+      top: 42%;                         /* ✅ БУЛО 50% */
+      transform: translate(-50%, -50%);
+      width: 86%;
+      height: 66%;
+
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-content: flex-end;
+
+      z-index: 20;
+      pointer-events: none;
+
+      background: transparent;
+      overflow: hidden;
+      border-radius: 999px;
+    }
+
+    .collected-items .item {
+      width: 84px;
+      height: 84px;
+      margin: -21px;
+      cursor: default;
+      box-shadow: none;
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+    }
+
+    .collected-items .item img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 1;
+    }
+
+    .win-message {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px 60px;
+      border-radius: 20px;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #16a34a;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 100;
+      text-align: center;
+      border: 4px solid #16a34a;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Склади кошик</h1>
+  <div class="task-desc">
+    Склади у кошик ті фрукти, у назві яких є звук <b>[у]</b>.
+  </div>
+</header>
+
+<div class="toolbar">
+  <button id="btnSound">🔊</button>
+  <button id="btnReset">🔄</button>
+</div>
+
+<div class="game-area">
+  <div class="board" id="board"></div>
+
+  <div class="basket-zone" id="dropzone">
+    <img src="img_0.png" alt="Кошик" class="basket-img">
+    <div class="collected-items" id="basketContent"></div>
+  </div>
+</div>
+
+<div id="winMsg" class="win-message">Молодець!</div>
+
+<audio id="audioTask" src="zv.mp3"></audio>
+
+<script>
+  const itemsData = [
+    { id: 1, img: 'Img_1.png', correct: true },
+    { id: 2, img: 'Img_2.png', correct: true },
+    { id: 3, img: 'Img_3.png', correct: false },
+    { id: 4, img: 'Img_4.png', correct: false },
+    { id: 5, img: 'Img_5.png', correct: true },
+    { id: 6, img: 'Img_6.png', correct: true },
+    { id: 7, img: 'Img_7.png', correct: true },
+    { id: 8, img: 'Img_8.png', correct: true }
+  ];
+
+  const board = document.getElementById('board');
+  const basketContent = document.getElementById('basketContent');
+  const dropzone = document.getElementById('dropzone');
+  const audioTask = document.getElementById('audioTask');
+  const winMsg = document.getElementById('winMsg');
+
+  let correctCount = 0;
+  const totalCorrect = itemsData.filter(i => i.correct).length;
+
+  function initGame() {
+    board.innerHTML = '';
+    basketContent.innerHTML = '';
+    winMsg.style.display = 'none';
+    correctCount = 0;
+
+    [...itemsData].sort(() => 0.5 - Math.random()).forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.draggable = true;
+      el.dataset.id = item.id;
+      el.dataset.correct = item.correct;
+      el.innerHTML = `<img src="${item.img}">`;
+
+      el.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', item.id);
+        setTimeout(() => el.style.opacity = '0.5', 0);
+      });
+
+      el.addEventListener('dragend', () => el.style.opacity = '1');
+      board.appendChild(el);
+    });
+  }
+
+  dropzone.addEventListener('dragover', e => e.preventDefault());
+
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    const dragged = document.querySelector(`.item[data-id="${id}"]`);
+    if (!dragged) return;
+
+    if (dragged.dataset.correct === 'true') {
+      basketContent.appendChild(dragged.cloneNode(true));
+      dragged.remove();
+      correctCount++;
+      if (correctCount === totalCorrect) winMsg.style.display = 'block';
+    } else {
+      dragged.classList.add('error');
+      setTimeout(() => dragged.classList.remove('error'), 400);
+    }
+  });
+
+  document.getElementById('btnSound').onclick = () => {
+    audioTask.currentTime = 0;
+    audioTask.play();
+  };
+
+  document.getElementById('btnReset').onclick = initGame;
+
+  initGame();
+</script>
+</body>
+</html>

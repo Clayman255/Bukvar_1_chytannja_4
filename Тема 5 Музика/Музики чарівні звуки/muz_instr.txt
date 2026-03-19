@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Музики чарівні звуки</title>
+
+<style>
+  :root{
+    --bg:#fbf6ee;
+    --card:#ffffff;
+    --text:#3f3f3f;
+    --muted:#6b6b6b;
+    --accent:#ffd84d;
+    --shadow:rgba(0,0,0,.12);
+
+    /* ✅ ТРОХИ збільшили ВСЕ в однакових пропорціях */
+    --uiScale: 1.12;
+
+    /* ✅ базова ширина зображень інструментів (і диригента) */
+    --instW: calc(178px * var(--uiScale));
+
+    /* ✅ масштаб диригента = як гітари (в JS підставляємо) */
+    --dyrScale:0.92;
+  }
+
+  body{
+    margin:0;
+    font-family:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+
+  .wrap{
+    max-width:1200px;
+    margin:18px auto 24px;
+    padding:0 16px;
+  }
+
+  h1{
+    text-align:center;
+    margin:6px 0 12px;
+    font-size:34px;
+    letter-spacing:.2px;
+  }
+
+  /* ====== Панель питань ====== */
+  .panel{
+    background:var(--card);
+    border-radius:18px;
+    box-shadow:0 10px 18px var(--shadow);
+    overflow:hidden;
+    margin: 0 auto 18px;
+    max-width: 1100px;
+  }
+  .phead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 14px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .phead .label{
+    font-size:18px;
+    font-weight:700;
+  }
+
+  .eyeBtn{
+    border:none;
+    background:var(--accent);
+    cursor:pointer;
+    border-radius:999px;
+    width:48px;
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 8px 14px rgba(0,0,0,.10);
+    flex:0 0 auto;
+  }
+  .eyeBtn span{ font-size:22px; }
+
+  .pbody{ display:none; padding:8px 14px 14px; }
+  .qrow{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:10px 8px;
+  }
+  .qrow + .qrow{ border-top:1px solid rgba(0,0,0,.06); }
+  .qtext{ font-size:17px; line-height:1.35; flex:1; }
+
+  .btn{
+    border:none;
+    background:var(--accent);
+    cursor:pointer;
+    border-radius:999px;
+    width:46px;
+    height:46px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 8px 14px rgba(0,0,0,.10);
+    user-select:none;
+    flex:0 0 auto;
+  }
+  .btn span{ font-size:15px; }
+  .btn:active{ transform: translateY(1px); }
+
+  /* ====== Сцена з інструментами ====== */
+  .stage{
+    background:var(--card);
+    border-radius:22px;
+    box-shadow:0 14px 24px var(--shadow);
+    padding: 18px 10px 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+    overflow: visible; /* ✅ НЕ обрізаємо */
+  }
+
+  .circle{
+    position:relative;
+    width: min(100%, 980px);
+    height: min(86vw, 740px);
+    margin: 34px auto 10px;
+
+    /* ✅ внутрішні поля, щоб бульбашки/кнопки вміщались */
+    padding: 44px 44px 52px 44px;
+    box-sizing: border-box;
+
+    overflow: visible; /* ✅ НЕ обрізаємо */
+    border-radius: 18px;
+  }
+
+  /* ✅ Диригент всередині білого поля */
+  #dyr{
+    position:absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%) scale(var(--dyrScale));
+    transform-origin: center;
+    width: var(--instW);
+    height: auto;
+    z-index: 3;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 10px 12px rgba(0,0,0,.14));
+  }
+
+  .ringHint{ display:none; }
+
+  .item{
+    position:absolute;
+    left:50%;
+    top:66%;
+    width: 170px;
+    text-align:center;
+    transform: translate(-50%, -50%);
+    will-change: transform;
+  }
+
+  .inst{
+    position:relative;
+    display:inline-block;
+    cursor:pointer;
+    filter: drop-shadow(0 10px 12px rgba(0,0,0,.14));
+    user-select:none;
+  }
+
+  .inst img{
+    width: var(--instW);
+    height: auto;
+    display:block;
+    pointer-events:none;
+  }
+
+  /* ====== Мовні поля (на сцені) ====== */
+  .bubble{
+    position:absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translate(-50%, -18px);
+    background:#fff;
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: 22px;
+
+    padding: 8px 11px;
+    font-size: 16px;
+
+    font-weight: 900;
+    color:#4b4b4b;
+    white-space: nowrap;
+    box-shadow: 0 10px 18px rgba(0,0,0,.10);
+
+    pointer-events:auto;
+    cursor:pointer;
+
+    transform-origin: center bottom;
+  }
+  .bubble::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    top:100%;
+    transform: translateX(-50%);
+    width:0;height:0;
+
+    border-left:8px solid transparent;
+    border-right:8px solid transparent;
+    border-top:8px solid #fff;
+
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,.10));
+  }
+
+  /* ✅ ОДНАКОВИЙ ВІЗУАЛЬНИЙ РОЗМІР КНОПКИ */
+  .noteBtn{
+    position:absolute;
+    right: -12px;
+    bottom: -14px;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    border:none;
+    background: var(--accent);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: 0 10px 16px rgba(0,0,0,.12);
+    z-index: 2;
+    transform: scale(var(--btnScale, 1));
+    transform-origin: center;
+  }
+  .noteBtn span{ font-size:16px; }
+  .noteBtn:active{ transform: scale(var(--btnScale, 1)) translateY(1px); }
+
+  /* ====== Джерело звуків ====== */
+  .sourceWrap{
+    max-width:1100px;
+    margin: 12px auto 0;
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    align-items:flex-start;
+  }
+
+  .sourceBtn{
+    border:none;
+    background:var(--accent);
+    border-radius: 16px;
+    padding: 10px 14px;
+    cursor:pointer;
+    box-shadow: 0 10px 18px rgba(0,0,0,.10);
+    font-size:14px;
+    color:#5a4a00;
+    font-weight:700;
+  }
+
+  .sourceBox{
+    display:none;
+    margin-top: 8px;
+    background: rgba(255,255,255,.8);
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 10px 18px rgba(0,0,0,.10);
+    max-width: 520px;
+  }
+  .sourceBox a{
+    color: var(--muted);
+    text-decoration: underline;
+    word-break: break-all;
+    font-size: 12px;
+  }
+
+  /* ====== Модальне вікно ====== */
+  .modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background: rgba(0,0,0,.55);
+    z-index: 999;
+    padding: 18px;
+  }
+  .modal.show{ display:flex; }
+
+  .modalCard{
+    position:relative;
+    width: min(1100px, 96vw);
+    height: min(760px, 92vh);
+    background: rgba(255,255,255,.92);
+    border-radius: 22px;
+    box-shadow: 0 18px 34px rgba(0,0,0,.25);
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .modalImg{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 18px 18px 120px;
+    display:block;
+  }
+
+  .closeBtn{
+    position:absolute;
+    top: 12px;
+    right: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    border:none;
+    background: var(--accent);
+    cursor:pointer;
+    box-shadow: 0 10px 18px rgba(0,0,0,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 28px;
+    line-height:1;
+    z-index: 5;
+  }
+  .closeBtn:active{ transform: translateY(1px); }
+
+  .modalTitle{
+    position:absolute;
+    left: 14px;
+    bottom: 12px;
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 16px;
+    padding: 10px 12px;
+    font-weight: 800;
+    color: #3f3f3f;
+    box-shadow: 0 10px 18px rgba(0,0,0,.12);
+    max-width: calc(100% - 28px);
+    z-index: 4;
+  }
+
+  .modalBubble{
+    position:absolute;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%);
+    background:#fff;
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: 26px;
+
+    padding: 11px 15px;
+    font-size: 23px;
+
+    font-weight: 900;
+    color:#4b4b4b;
+    white-space: nowrap;
+    box-shadow: 0 14px 24px rgba(0,0,0,.14);
+    z-index: 4;
+
+    pointer-events:auto;
+    cursor:pointer;
+  }
+
+  .modalSoundBtn{
+    position:absolute;
+    left: 50%;
+    bottom: 68px;
+    transform: translateX(-50%);
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    border:none;
+    background: var(--accent);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: 0 14px 24px rgba(0,0,0,.18);
+    z-index: 5;
+  }
+  .modalSoundBtn span{ font-size:20px; }
+  .modalSoundBtn:active{ transform: translateX(-50%) translateY(1px); }
+
+  @media (max-width: 820px){
+    :root{
+      --instW: calc(150px * var(--uiScale));
+    }
+    h1{ font-size:28px; }
+    .stage{ padding: 18px 10px 68px; }
+    .circle{
+      height: min(104vw, 760px);
+      padding: 36px 28px 44px 28px;
+    }
+
+    .bubble{ font-size:14px; padding: 7px 10px; }
+    .noteBtn{ width: 52px; height: 52px; }
+    .closeBtn{ width: 52px; height: 52px; }
+    .modalBubble{ font-size: 20px; padding: 10px 13px; }
+    .modalSoundBtn{ width: 64px; height: 64px; bottom: 62px; }
+  }
+</style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Музики чарівні звуки</h1>
+
+    <div class="panel" id="qpanel">
+      <div class="phead" id="qtoggle" title="Розгорнути/згорнути питання">
+        <div class="label">Питання для обговорення</div>
+        <button class="eyeBtn" id="eyeBtn" type="button" aria-label="Розгорнути або згорнути питання">
+          <span id="eyeIcon">👁️</span>
+        </button>
+      </div>
+
+      <div class="pbody" id="qbody" aria-hidden="true">
+        <div class="qrow"><button class="btn" data-audio="zv_1.mp3" type="button"><span>🔊</span></button><div class="qtext">1. Назвіть музичні інструменти, що входять до складу оркестру.</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_2.mp3" type="button"><span>🔊</span></button><div class="qtext">2. Які звуки допомагають їм налаштуватися на гру?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_3.mp3" type="button"><span>🔊</span></button><div class="qtext">3. Назвіть ланцюжок звуків у слові «труба».</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_4.mp3" type="button"><span>🔊</span></button><div class="qtext">4. Які з них голосні звуки? А які – приголосні?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_5.mp3" type="button"><span>🔊</span></button><div class="qtext">5. Як звучать приголосні звуки перед голосним [у]: твердо чи м’яко?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_6.mp3" type="button"><span>🔊</span></button><div class="qtext">6. А перед [а]?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_7.mp3" type="button"><span>🔊</span></button><div class="qtext">7. Вимовте слово «скрипка».</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_8.mp3" type="button"><span>🔊</span></button><div class="qtext">8. Назвіть звуки у слові «скрипка» за порядком.</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_9.mp3" type="button"><span>🔊</span></button><div class="qtext">9. Які з них голосні звуки? А які – приголосні?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_10.mp3" type="button"><span>🔊</span></button><div class="qtext">10. Який звук ви чуєте перед звуком [и]?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_11.mp3" type="button"><span>🔊</span></button><div class="qtext">11. Як вимовляється звук [р] у слові «скрипка»: твердо чи м’яко?</div></div>
+        <div class="qrow"><button class="btn" data-audio="zv_12.mp3" type="button"><span>🔊</span></button><div class="qtext">12. Запам’ятайте! Усі приголосні звуки перед голосним [і] вимовляються м’яко, а перед іншими голосними ([а], [о], [у], [е], [и]) – твердо.</div></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="circle" id="circle" aria-label="Інструменти у колі">
+        <img id="dyr" src="dyr.png" alt="Диригент">
+      </div>
+
+      <div class="sourceWrap">
+        <div>
+          <button class="sourceBtn" id="soundSourceBtn" type="button">Звуки взято з...</button>
+          <div class="sourceBox" id="soundSourceBox">
+<a id="soundSourceLink" href="https://pixabay.com/sound-effects/search/" target="_blank" rel="noopener noreferrer">
+  https://pixabay.com/sound-effects/search/
+</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-label="Перегляд інструмента">
+      <button class="closeBtn" id="closeModal" type="button" aria-label="Закрити">✕</button>
+      <div class="modalBubble" id="modalBubble" aria-hidden="true"></div>
+      <img class="modalImg" id="modalImg" alt="">
+      <button class="modalSoundBtn" id="modalSoundBtn" type="button" title="Прослухати звук інструмента">
+        <span>🎵</span>
+      </button>
+      <div class="modalTitle" id="modalTitle"></div>
+    </div>
+  </div>
+
+  <audio id="player"></audio>
+
+<script>
+  const instruments = [
+    { id: 1, name: "Акордеон",  img: "i1.png", sound: "zvuk_1.mp3", bubble: "А-а-а...", base: 3/2 },
+    { id: 2, name: "Флейта",   img: "i8.png", sound: "zvuk_8.mp3", bubble: "О-о-о...", base: 1/3 },
+    { id: 3, name: "Дримба",   img: "i4.png", sound: "zvuk_4.mp3", bubble: "Е-е-е...", base: 2/3 },
+    { id: 4, name: "Барабан",  img: "i2.png", sound: "zvuk_2.mp3", bubble: "О-о-о...", base: 1/2 },
+    { id: 5, name: "Піаніно",  img: "i5.png", sound: "zvuk_5.mp3", bubble: "І-і-і...", base: 2 },
+    { id: 6, name: "Труба",    img: "i7.png", sound: "zvuk_7.mp3", bubble: "А-а-а...", base: 1/3 },
+    { id: 7, name: "Скрипка",  img: "i6.png", sound: "zvuk_6.mp3", bubble: "И-и-и...", base: 1/2 },
+    { id: 8, name: "Гітара",   img: "i3.png", sound: "zvuk_3.mp3", bubble: "У-у-у...", base: 1 }
+  ];
+
+  const tweak = { 1:0.92, 2:1.14, 3:1.12, 4:1.00, 5:1.05, 6:1.14, 7:1.12, 8:0.92 };
+
+  // ✅ трошки збільшуємо ВСІ об'єкти в однакових пропорціях (додатково до CSS)
+  const GLOBAL_SCALE = 1.08;
+
+  // ✅ ГАРАНТОВАНА ВІДСТАНЬ між будь-якими об'єктами (інструмент+бульбашка+кнопка)
+  const MIN_GAP_PX = 18;
+
+  const player = document.getElementById("player");
+
+  function normalizeSrc(src){
+    try { return new URL(src, window.location.href).href; }
+    catch { return String(src || ""); }
+  }
+
+  function stopAudio(){
+    player.pause();
+    try { player.currentTime = 0; } catch {}
+  }
+
+  function toggleAudio(src){
+    if(!src) return;
+    const target = normalizeSrc(src);
+    const current = normalizeSrc(player.currentSrc || player.src || "");
+    const isSame = current && (current === target);
+    const isPlaying = !player.paused && !player.ended;
+
+    if(isSame && isPlaying){
+      stopAudio();
+      return;
+    }
+
+    player.pause();
+    try { player.currentTime = 0; } catch {}
+    player.src = src;
+    player.play().catch(()=>{});
+  }
+
+  function imgToZvu(imgPath){
+    const m = String(imgPath).match(/i(\d+)\.(png|jpg|jpeg|webp|gif)$/i);
+    const n = m ? m[1] : null;
+    return n ? `zvu_${n}.mp3` : "";
+  }
+
+  const circle = document.getElementById("circle");
+  function setConductorScale(refScale){
+    document.documentElement.style.setProperty("--dyrScale", refScale);
+  }
+
+  function applyTransforms(items){
+    items.forEach(el => {
+      const s = el.__pos;
+      el.style.transform = `translate(calc(-50% + ${s.dx}px), calc(-50% + ${s.dy}px))`;
+    });
+  }
+
+  // ✅ ПОВНИЙ bbox для елемента: інструмент + мовленнєве поле + кнопка 🎵
+  // (бо absolute-діти НЕ збільшують bbox батька, тому раніше solver міг "не бачити" накладання)
+  function getFullBox(itemEl){
+    const inst = itemEl.querySelector(".inst");
+    const bubble = itemEl.querySelector(".bubble");
+    const note = itemEl.querySelector(".noteBtn");
+    const parts = [inst, bubble, note].filter(Boolean);
+
+    // fallback
+    if(!parts.length) return itemEl.getBoundingClientRect();
+
+    const rects = parts.map(p => p.getBoundingClientRect());
+    const left   = Math.min(...rects.map(r => r.left));
+    const top    = Math.min(...rects.map(r => r.top));
+    const right  = Math.max(...rects.map(r => r.right));
+    const bottom = Math.max(...rects.map(r => r.bottom));
+    return { left, top, right, bottom, width: right-left, height: bottom-top };
+  }
+
+  function solveLayoutNoOverlap({
+    iterations = 220,
+    gap = MIN_GAP_PX,
+    boundsMargin = 10
+  } = {}){
+    const items = Array.from(circle.querySelectorAll(".item"));
+    if(items.length < 2) return;
+
+    const box = circle.getBoundingClientRect();
+    const minX = box.left + boundsMargin;
+    const maxX = box.right - boundsMargin;
+    const minY = box.top + boundsMargin;
+    const maxY = box.bottom - boundsMargin;
+
+    const dyrRect = document.getElementById("dyr").getBoundingClientRect();
+
+    applyTransforms(items);
+
+    for(let it=0; it<iterations; it++){
+      let moved = false;
+
+      // актуальні bbox-и (повні)
+      const rects = items.map(getFullBox);
+      const centers = rects.map(r => ({ x:(r.left+r.right)/2, y:(r.top+r.bottom)/2 }));
+
+      // 1) розсування між елементами з урахуванням gap
+      for(let i=0;i<items.length;i++){
+        for(let j=i+1;j<items.length;j++){
+          const a = rects[i], b = rects[j];
+          const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+
+          // якщо перетинаються або ближче ніж gap по обох осях
+          if(overlapX > -gap && overlapY > -gap){
+            // наскільки "втиснуті" з урахуванням необхідного зазору
+            const penX = overlapX + gap;
+            const penY = overlapY + gap;
+
+            const ci = centers[i], cj = centers[j];
+            const signX = (cj.x >= ci.x) ? 1 : -1;
+            const signY = (cj.y >= ci.y) ? 1 : -1;
+
+            // штовхаємо по осі з МЕНШИМ проникненням (щоб мінімально рухати)
+            if(penX < penY){
+              const push = penX / 2;
+              items[i].__pos.dx -= signX * push;
+              items[j].__pos.dx += signX * push;
+            } else {
+              const push = penY / 2;
+              items[i].__pos.dy -= signY * push;
+              items[j].__pos.dy += signY * push;
+            }
+            moved = true;
+          }
+        }
+      }
+
+      // 2) не наїжджати на диригента (як на перешкоду з gap)
+      applyTransforms(items);
+      const rects2 = items.map(getFullBox);
+      for(let i=0;i<items.length;i++){
+        const r = rects2[i];
+
+        const overlapX = Math.min(r.right, dyrRect.right) - Math.max(r.left, dyrRect.left);
+        const overlapY = Math.min(r.bottom, dyrRect.bottom) - Math.max(r.top, dyrRect.top);
+
+        if(overlapX > -gap && overlapY > -gap){
+          const penX = overlapX + gap;
+          const penY = overlapY + gap;
+
+          const cx = (r.left+r.right)/2;
+          const dxSign = (cx >= (dyrRect.left+dyrRect.right)/2) ? 1 : -1;
+          const cy = (r.top+r.bottom)/2;
+          const dySign = (cy >= (dyrRect.top+dyrRect.bottom)/2) ? 1 : -1;
+
+          if(penX < penY){
+            items[i].__pos.dx += dxSign * penX;
+          } else {
+            items[i].__pos.dy += dySign * penY;
+          }
+          moved = true;
+        }
+      }
+
+      // 3) утримати в межах білого поля (не обрізати — просто посунути)
+      applyTransforms(items);
+      const rects3 = items.map(getFullBox);
+      for(let i=0;i<items.length;i++){
+        const r = rects3[i];
+        let shiftX = 0, shiftY = 0;
+
+        if(r.left < minX) shiftX = (minX - r.left);
+        if(r.right > maxX) shiftX = (maxX - r.right);
+
+        if(r.top < minY) shiftY = (minY - r.top);
+        if(r.bottom > maxY) shiftY = (maxY - r.bottom);
+
+        if(shiftX || shiftY){
+          items[i].__pos.dx += shiftX;
+          items[i].__pos.dy += shiftY;
+          moved = true;
+        }
+      }
+
+      applyTransforms(items);
+
+      // якщо нічого не рухали — все ок
+      if(!moved) break;
+    }
+
+    // фінальна перевірка/піджим до меж
+    applyTransforms(items);
+    const rectsF = items.map(getFullBox);
+    rectsF.forEach((r, i) => {
+      let shiftX = 0, shiftY = 0;
+      if(r.left < minX) shiftX = (minX - r.left);
+      if(r.right > maxX) shiftX = (maxX - r.right);
+      if(r.top < minY) shiftY = (minY - r.top);
+      if(r.bottom > maxY) shiftY = (maxY - r.bottom);
+      if(shiftX || shiftY){
+        items[i].__pos.dx += shiftX;
+        items[i].__pos.dy += shiftY;
+      }
+    });
+    applyTransforms(items);
+  }
+
+  function buildCircle(){
+    circle.querySelectorAll(".item").forEach(n => n.remove());
+
+    const n = instruments.length;
+    const rect = circle.getBoundingClientRect();
+
+    let R = Math.max(150, Math.min(235, rect.width * 0.255));
+
+    const startDeg = -90;
+    const stepDeg = 360 / n;
+
+    const refScale = instruments.find(x => x.id === 8).base * (tweak[8] || 1) * GLOBAL_SCALE;
+    setConductorScale(refScale);
+
+    const clamp = (v) => Math.max(0.30, Math.min(2.10, v));
+    function rawScale(ins){
+      let s = ins.base * (tweak[ins.id] || 1);
+      if(ins.id === 1){ s = refScale; }
+      if(ins.id === 5){ s = s * 1.10; }
+      s *= GLOBAL_SCALE;
+      return clamp(s);
+    }
+
+    const accordionScale = rawScale(instruments.find(x => x.id === 1));
+    const groupToAccordion = new Set([2,4,6,7]);
+    const drimbaShrink = 4/9;
+
+    let domraScale = clamp(accordionScale);
+
+    instruments.forEach((ins, i) => {
+      const deg = startDeg + stepDeg * i;
+      const rad = deg * Math.PI / 180;
+
+      const x = Math.cos(rad) * R;
+      const y = Math.sin(rad) * R;
+
+      const item = document.createElement("div");
+      item.className = "item";
+      item.__pos = {dx:x, dy:y};
+      item.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+
+      const inst = document.createElement("div");
+      inst.className = "inst";
+
+      let s = rawScale(ins);
+      if(groupToAccordion.has(ins.id)) s = accordionScale;
+      if(ins.id === 3) s = accordionScale * drimbaShrink;
+
+      s = clamp(s);
+      inst.style.transform = `scale(${s})`;
+
+      const bubbleSound = imgToZvu(ins.img);
+
+      inst.innerHTML = `
+        <div class="bubble" id="bubble_${ins.id}" data-audio="${bubbleSound}">${ins.bubble}</div>
+        <img src="${ins.img}" alt="${ins.name}">
+        <button class="noteBtn" id="note_${ins.id}" type="button" title="Прослухати звук інструмента" data-audio="${ins.sound}">
+          <span>🎵</span>
+        </button>
+      `;
+
+      const bubble = inst.querySelector(`#bubble_${ins.id}`);
+      bubble.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleAudio(bubble.dataset.audio);
+      });
+
+      if(ins.id === 1 || ins.id === 5){
+        const bubbleScale = refScale / s;
+        bubble.style.transform = `translate(-50%, -18px) scale(${bubbleScale})`;
+      }
+      if(ins.id === 2 || ins.id === 6){
+        const bubbleScale = domraScale / s;
+        bubble.style.transform = `translate(-50%, -18px) scale(${bubbleScale})`;
+      }
+
+      const noteBtn = inst.querySelector(`#note_${ins.id}`);
+      if(ins.id === 5){
+        const btnScale = refScale / s;
+        noteBtn.style.setProperty("--btnScale", btnScale.toFixed(4));
+      } else {
+        noteBtn.style.setProperty("--btnScale", "1");
+      }
+
+      inst.addEventListener("click", () => openModal(ins));
+      noteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleAudio(noteBtn.dataset.audio);
+      });
+
+      item.appendChild(inst);
+      circle.appendChild(item);
+    });
+
+    // ✅ головне: гарантовано без накладань і з відстанню
+    requestAnimationFrame(() => {
+      solveLayoutNoOverlap({iterations: 260, gap: MIN_GAP_PX, boundsMargin: 10});
+      requestAnimationFrame(() => {
+        // ще один контрольний прохід (після того як браузер усе доміряє)
+        solveLayoutNoOverlap({iterations: 180, gap: MIN_GAP_PX, boundsMargin: 10});
+      });
+    });
+  }
+
+  const modal = document.getElementById("modal");
+  const modalImg = document.getElementById("modalImg");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBubble = document.getElementById("modalBubble");
+  const modalSoundBtn = document.getElementById("modalSoundBtn");
+  const closeModalBtn = document.getElementById("closeModal");
+
+  let currentModalSound = "";
+  let currentModalBubbleSound = "";
+
+  modalBubble.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleAudio(currentModalBubbleSound);
+  });
+
+  function openModal(ins){
+    modalImg.src = ins.img;
+    modalImg.alt = ins.name;
+    modalTitle.textContent = ins.name;
+
+    modalBubble.textContent = ins.bubble;
+    modalBubble.setAttribute("aria-hidden","false");
+
+    currentModalSound = ins.sound;
+    currentModalBubbleSound = imgToZvu(ins.img);
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden","false");
+    document.body.style.overflow = "hidden";
+  }
+
+  modalSoundBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleAudio(currentModalSound);
+  });
+
+  function closeModal(){
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden","true");
+    document.body.style.overflow = "";
+    modalImg.removeAttribute("src");
+    modalBubble.textContent = "";
+    currentModalSound = "";
+    currentModalBubbleSound = "";
+  }
+
+  closeModalBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => { if(e.target === modal) closeModal(); });
+  window.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && modal.classList.contains("show")) closeModal();
+  });
+
+  const qbody = document.getElementById("qbody");
+  const eyeIcon = document.getElementById("eyeIcon");
+  const qtoggle = document.getElementById("qtoggle");
+  const eyeBtn = document.getElementById("eyeBtn");
+
+  let questionsOpen = false;
+  function setQuestions(open){
+    questionsOpen = open;
+    qbody.style.display = open ? "block" : "none";
+    qbody.setAttribute("aria-hidden", open ? "false" : "true");
+    eyeIcon.textContent = open ? "–" : "👁️";
+  }
+  function toggleQuestions(){ setQuestions(!questionsOpen); }
+
+  qtoggle.addEventListener("click", (e) => {
+    if(e.target === eyeBtn || eyeBtn.contains(e.target)) return;
+    toggleQuestions();
+  });
+  eyeBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleQuestions(); });
+
+  document.querySelectorAll(".pbody [data-audio]").forEach(btn => {
+    btn.addEventListener("click", () => toggleAudio(btn.dataset.audio));
+  });
+
+  const soundSourceBtn = document.getElementById("soundSourceBtn");
+  const soundSourceBox = document.getElementById("soundSourceBox");
+  soundSourceBtn.addEventListener("click", () => {
+    soundSourceBox.style.display = (soundSourceBox.style.display === "block") ? "none" : "block";
+  });
+
+  // ✅ коли картинки реально завантажаться — ще раз розкласти (щоб 100% без накладань)
+  let loaded = 0;
+  instruments.forEach(ins => {
+    const im = new Image();
+    im.onload = () => {
+      loaded++;
+      if(loaded === instruments.length){
+        buildCircle();
+      }
+    };
+    im.src = ins.img;
+  });
+
+  buildCircle();
+  setQuestions(false);
+
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__circleT);
+    window.__circleT = setTimeout(buildCircle, 180);
+  });
+</script>
+</body>
+</html>

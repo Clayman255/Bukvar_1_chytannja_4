@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Гра "Утворюємо словосполучення"</title>
+  <style>
+    :root {
+      --bg: #fbf6ee;
+      --accent: #4da6ff;
+      --bad: #ef4444;
+      --text-main: #2c3e50;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    header { text-align: center; margin-bottom: 20px; z-index: 10; }
+    h1 { color: #2980b9; margin-bottom: 10px; }
+
+    .task-desc {
+      font-size: 1.3rem;
+      background: #fff;
+      padding: 10px 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .toolbar { display: flex; gap: 15px; margin-bottom: 20px; z-index: 10; }
+    
+    button.tool-btn {
+      border: 0; border-radius: 50%; width: 45px; height: 45px;
+      font-size: 20px; background: var(--accent); cursor: pointer;
+      color: white; display: flex; align-items: center; justify-content: center;
+      transition: transform 0.1s;
+    }
+    button.tool-btn:active { transform: scale(0.9); }
+
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+    }
+
+    #line-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 150px; 
+      position: relative;
+      z-index: 6;
+    }
+
+    .column { display: flex; flex-direction: column; gap: 12px; }
+
+    .item {
+      background: #fff;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+      border: 3px solid transparent;
+      transition: transform 0.2s, background-color 0.3s;
+      user-select: none;
+    }
+
+    .item.selected { border-color: var(--accent); background-color: #eef8ff; }
+    .item.error { animation: shake 0.4s; border-color: var(--bad); }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 30px 50px; border-radius: 20px; font-size: 2rem;
+      font-weight: bold; color: #16a34a; border: 5px solid #16a34a;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 100; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Утворюємо словосполучення</h1>
+  <div class="task-desc">З'єднай слова, щоб утворилися словосполучення.</div>
+</header>
+
+<div class="toolbar">
+  <button id="btnSound" class="tool-btn" title="Прослухати завдання">🔊</button>
+  <button id="btnReset" class="tool-btn" title="Почати спочатку">🔄</button>
+</div>
+
+<div class="game-wrapper">
+  <svg id="line-canvas">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="game-container">
+    <div class="column" id="col-left"></div>
+    <div class="column" id="col-right"></div>
+  </div>
+</div>
+
+<div id="winMsg" class="win-message">Молодець! <br> Всі словосполучення утворено!</div>
+
+<audio id="audioTask" src="au.mp3"></audio>
+<audio id="soundCorrect" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+<audio id="soundWrong" src="https://actions.google.com/sounds/v1/cartoon/clank_car_crash.ogg"></audio>
+
+<script>
+  // Нові дані для букви Щ
+  const pairsData = [
+    { left: 'дрібний', right: 'дощ', id: 1 },
+    { left: 'смачний', right: 'борщ', id: 2 },
+    { left: 'прудка', right: 'ящірка', id: 3 },
+    { left: 'нова', right: 'щітка', id: 4 },
+    { left: 'щирий', right: 'друг', id: 5 },
+    { left: 'щасливий', right: 'день', id: 6 }
+  ];
+
+  const colors = ['#4da6ff', '#22c55e', '#a855f7', '#f59e0b', '#06b6d4', '#ec4899', '#84cc16', '#6366f1'];
+  
+  let selectedLeft = null;
+  let matchedCount = 0;
+
+  const colLeft = document.getElementById('col-left');
+  const colRight = document.getElementById('col-right');
+  const canvas = document.getElementById('line-canvas');
+  const winMsg = document.getElementById('winMsg');
+  const audioTask = document.getElementById('audioTask');
+
+  function initGame() {
+    colLeft.innerHTML = '';
+    colRight.innerHTML = '';
+    canvas.innerHTML = canvas.querySelector('defs').outerHTML;
+    matchedCount = 0;
+    selectedLeft = null;
+    winMsg.style.display = 'none';
+
+    // Перемішування елементів
+    const leftItems = [...pairsData].sort(() => Math.random() - 0.5);
+    const rightItems = [...pairsData].sort(() => Math.random() - 0.5);
+
+    leftItems.forEach((pair) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.textContent = pair.left;
+      div.dataset.id = pair.id;
+      // Використовуємо id для сталого кольору пари
+      div.dataset.color = colors[(pair.id - 1) % colors.length];
+      div.onclick = () => selectLeft(div);
+      colLeft.appendChild(div);
+    });
+
+    rightItems.forEach(pair => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.textContent = pair.right;
+      div.dataset.id = pair.id;
+      div.onclick = () => selectRight(div);
+      colRight.appendChild(div);
+    });
+  }
+
+  function selectLeft(el) {
+    if (el.classList.contains('matched')) return;
+    document.querySelectorAll('#col-left .item').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedLeft = el;
+  }
+
+  function selectRight(el) {
+    if (el.classList.contains('matched') || !selectedLeft) return;
+
+    if (el.dataset.id === selectedLeft.dataset.id) {
+      const color = selectedLeft.dataset.color;
+      el.classList.add('matched');
+      selectedLeft.classList.add('matched');
+      el.style.borderColor = color;
+      selectedLeft.style.borderColor = color;
+      el.style.backgroundColor = color + '15';
+      drawArrow(selectedLeft, el, color);
+      selectedLeft.classList.remove('selected');
+      selectedLeft = null;
+      matchedCount++;
+      document.getElementById('soundCorrect').play().catch(()=>{});
+      if (matchedCount === pairsData.length) {
+        setTimeout(() => { winMsg.style.display = 'block'; }, 500);
+      }
+    } else {
+      el.classList.add('error');
+      document.getElementById('soundWrong').play().catch(()=>{});
+      setTimeout(() => el.classList.remove('error'), 400);
+    }
+  }
+
+  function drawArrow(startEl, endEl, color) {
+    const rect1 = startEl.getBoundingClientRect();
+    const rect2 = endEl.getBoundingClientRect();
+    const wrapperRect = document.querySelector('.game-wrapper').getBoundingClientRect();
+    
+    const x1 = rect1.right - wrapperRect.left;
+    const y1 = rect1.top + rect1.height / 2 - wrapperRect.top;
+    const x2 = rect2.left - wrapperRect.left;
+    const y2 = rect2.top + rect2.height / 2 - wrapperRect.top;
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width', '4');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    canvas.appendChild(line);
+  }
+
+  window.addEventListener('resize', () => { if (matchedCount > 0) initGame(); });
+
+  document.getElementById('btnReset').onclick = initGame;
+
+  document.getElementById('btnSound').onclick = () => {
+    audioTask.currentTime = 0;
+    audioTask.play().catch(e => console.log("Файл au.mp3 не знайдено"));
+  };
+
+  initGame();
+</script>
+</body>
+</html>

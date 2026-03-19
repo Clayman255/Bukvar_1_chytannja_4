@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Склади слово</title>
+  <style>
+    :root{
+      --ink:#1f1f1f; --line:#2a2a2a; --bg:#ffffff; --card:#ffffff;
+      --good:#1fa84a; --accent:#ffd84d; --bad:#d64545;
+    }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+    .wrap{ max-width:1240px; margin:0 auto; padding:18px; }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    h1{ margin:0; font-size:28px; letter-spacing:.2px; }
+    .taskbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+    .btn{
+      border:2px solid var(--line); background:var(--card); padding:10px 12px; border-radius:14px;
+      font-weight:700; cursor:pointer; user-select:none; transition:transform .08s ease, background .15s ease;
+    }
+    .btn:active{ transform:translateY(1px) }
+    .btn.accent{ background:var(--accent) }
+    .btn.good{ border-color:var(--good) }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; }
+
+    .instruction{
+      margin:10px 0 18px; padding:12px 14px; border:2px solid #e6e6e6; border-radius:16px;
+      background:#fafafa; line-height:1.35; font-weight:600;
+    }
+
+    /* ✅ 3 рядки, 2 колонки (лівий вузький, правий широкий) */
+    .grid{
+      display:grid;
+      grid-template-columns: 0.65fr 2.35fr; /* ← зменшили 1-й, збільшили 2-й */
+      gap:14px;
+      align-items:stretch;
+    }
+
+    .cell{
+      border:2px solid #e8e8e8; border-radius:18px; background:#fff; padding:14px; min-height:180px;
+      box-shadow:0 6px 18px rgba(0,0,0,.05);
+    }
+
+    /* ✅ Ліві клітинки: по центру, і кружки саме тут (кожен рядок окремо) */
+    .cell.left{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* ✅ Праві клітинки */
+    .cell.right{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    /* ЛІВИЙ БЛОК З ЛІТЕРАМИ (DRAG&DROP) */
+    .letters{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-items:center;
+      padding:6px 2px;
+    }
+
+    .letter{
+      width:54px; height:54px;
+      border-radius:999px;
+      border:3px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      font-size:24px;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+      cursor:grab;
+      transition: transform .08s ease, box-shadow .15s ease, outline .15s ease, opacity .12s ease;
+    }
+    .letter:active{ cursor:grabbing; transform:translateY(1px); }
+    .letter.dragging{ opacity:.65; }
+    .letter.locked{ cursor:not-allowed; opacity:.9; }
+    .letter.shake{ animation:shake .25s linear 0s 1; }
+    @keyframes shake{
+      0%{transform:translateX(0)} 25%{transform:translateX(-7px)} 50%{transform:translateX(7px)}
+      75%{transform:translateX(-6px)} 100%{transform:translateX(0)}
+    }
+
+    .pic{
+      width:150px; height:120px;
+      border-radius:16px;
+      border:2px solid #e7e7e7;
+      object-fit:contain;
+      background:#fff;
+      flex:0 0 auto;
+    }
+
+    /* ✅ Слоти в ОДИН рядок (щоб "всі кружечки влізли") */
+    .targetsWrap{
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .targets{
+      display:flex;
+      gap:10px;
+      flex-wrap:nowrap;          /* ← один рядок */
+      align-items:center;
+      justify-content:flex-start;
+      overflow:hidden;
+      padding:6px 0;
+    }
+
+    .slot{
+      width:54px; height:54px;
+      border-radius:999px;
+      border:3px dashed #333;
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+      flex:0 0 auto;
+    }
+    .slot.filled{ border-style:solid; }
+
+    .slot.dropOk{ outline:4px solid rgba(31,168,74,.25); }
+    .slot.dropBad{ outline:4px solid rgba(214,69,69,.25); }
+
+    /* ✅ ПІД кружечками: 🔊 (без тексту) і пташка */
+    .belowBar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top:10px;
+      min-height:44px;
+    }
+
+    .soundIcon{
+      width:46px; height:46px;
+      border-radius:14px;
+      border:2px solid var(--line);
+      background:#fff;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      font-size:22px;
+      font-weight:800;
+      transition: transform .08s ease;
+    }
+    .soundIcon:active{ transform:translateY(1px) }
+    .soundIcon[disabled]{ opacity:.55; cursor:not-allowed; }
+
+    .check{ width:34px; height:34px; display:none; }
+    .check.show{ display:block; }
+
+    .finalBar{
+      margin-top:16px;
+      display:none;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    .finalBar.show{ display:flex; }
+
+    /* ✅ На мобільних дозволимо перенос слотів */
+    @media (max-width:1000px){
+      .grid{ grid-template-columns:1fr; }
+      .cell.right{ flex-direction:column; align-items:flex-start; }
+      .targets{ flex-wrap:wrap; overflow:visible; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Склади слово</h1>
+      <div class="taskbar">
+        <!-- ✅ кнопка лише 🔊 -->
+        <button class="btn accent" id="zavdahja" title="Озвучити завдання">🔊</button>
+        <button class="btn" id="resetTop">🔁 Ще раз</button>
+      </div>
+    </header>
+
+    <div class="instruction" id="taskText">
+      Із звуків склади назву музичного інструмента і познач відповідь справа біля малюнка.
+    </div>
+
+    <div class="grid" id="gameGrid"></div>
+
+    <div class="finalBar" id="finalBar">
+      <button class="btn good" id="winBtn">Ура! Правильно!</button>
+      <button class="btn" id="resetBottom">Ще раз</button>
+    </div>
+  </div>
+
+  <!-- ✅ ВАШІ ФАЙЛИ -->
+  <audio id="taskAudio" src="zavdahja.mp3" preload="auto"></audio>
+  <audio id="slovo1" src="slovo1.mp3" preload="auto"></audio>
+
+  <!-- ✅ ВАШІ mp3 ДЛЯ 1-го РЯДКА -->
+  <audio id="audio1_1" src="audio1.1.mp3" preload="auto"></audio>
+  <audio id="audio1_2" src="audio1.2.mp3" preload="auto"></audio>
+  <audio id="audio1_3" src="audio1.3.mp3" preload="auto"></audio>
+  <audio id="audio1_4" src="audio1.4.mp3" preload="auto"></audio>
+  <audio id="audio1_5" src="audio1.5.mp3" preload="auto"></audio>
+  <audio id="audio1_6" src="audio1.6.mp3" preload="auto"></audio>
+  <audio id="audio1_7" src="audio1.7.mp3" preload="auto"></audio>
+
+  <!-- ⏳ решта (дошлете) -->
+  <audio id="audio2_1" src="audio2.1.mp3" preload="auto"></audio>
+  <audio id="audio2_2" src="audio2.2.mp3" preload="auto"></audio>
+  <audio id="audio2_3" src="audio2.3.mp3" preload="auto"></audio>
+  <audio id="audio2_4" src="audio2.4.mp3" preload="auto"></audio>
+  <audio id="audio2_5" src="audio2.5.mp3" preload="auto"></audio>
+
+  <audio id="audio3_1" src="audio3.1.mp3" preload="auto"></audio>
+  <audio id="audio3_2" src="audio3.2.mp3" preload="auto"></audio>
+  <audio id="audio3_3" src="audio3.3.mp3" preload="auto"></audio>
+  <audio id="audio3_4" src="audio3.4.mp3" preload="auto"></audio>
+  <audio id="audio3_5" src="audio3.5.mp3" preload="auto"></audio>
+  <audio id="audio3_6" src="audio3.6.mp3" preload="auto"></audio>
+  <audio id="audio3_7" src="audio3.7.mp3" preload="auto"></audio>
+
+  <audio id="slovo2" src="slovo2.mp3" preload="auto"></audio>
+  <audio id="slovo3" src="slovo3.mp3" preload="auto"></audio>
+
+  <script>
+    const TASK_TEXT = "Із звуків склади назву музичного інструмента і познач відповідь справа біля малюнка.";
+
+    const ROWS = [
+      {
+        key: "row1",
+        word: ["с","к","р","и","п","к","а"],
+        imageSrc: "i1.png",
+        letterSounds: [
+          { ch:"с", audio:"audio1_1" },
+          { ch:"к", audio:"audio1_2" },
+          { ch:"р", audio:"audio1_3" },
+          { ch:"и", audio:"audio1_4" },
+          { ch:"п", audio:"audio1_5" },
+          { ch:"к", audio:"audio1_6" },
+          { ch:"а", audio:"audio1_7" }
+        ],
+        slovoAudio: "slovo1"
+      },
+      {
+        key: "row2",
+        word: ["к","о","б","з","а"],
+        imageSrc: "i2.png",
+        letterSounds: [
+          { ch:"к", audio:"audio2_1" },
+          { ch:"о", audio:"audio2_2" },
+          { ch:"б", audio:"audio2_3" },
+          { ch:"з", audio:"audio2_4" },
+          { ch:"а", audio:"audio2_5" }
+        ],
+        slovoAudio: "slovo2"
+      },
+      {
+        key: "row3",
+        word: ["б","а","н","д","у","р","а"],
+        imageSrc: "i3.png",
+        letterSounds: [
+          { ch:"б", audio:"audio3_1" },
+          { ch:"а", audio:"audio3_2" },
+          { ch:"н", audio:"audio3_3" },
+          { ch:"д", audio:"audio3_4" },
+          { ch:"у", audio:"audio3_5" },
+          { ch:"р", audio:"audio3_6" },
+          { ch:"а", audio:"audio3_7" }
+        ],
+        slovoAudio: "slovo3"
+      }
+    ];
+
+    const state = {};
+    let dragTokenId = null;
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function playAudioById(id){
+      const el = document.getElementById(id);
+      if(!el) return;
+      try{ el.currentTime = 0; el.play(); }catch(e){}
+    }
+
+    function nextIndex(rowKey){
+      return state[rowKey].slotsFilled.findIndex(v => v === false);
+    }
+    function isNextSlot(rowKey, idx){ return nextIndex(rowKey) === idx; }
+
+    function allRowsDoneAndSpoken(){
+      return ROWS.every(r => state[r.key].complete && state[r.key].slovoPlayed);
+    }
+
+    function clearHighlights(){
+      document.querySelectorAll(".slot").forEach(s=>s.classList.remove("dropOk","dropBad"));
+    }
+
+    function build(){
+      const grid = document.getElementById("gameGrid");
+      grid.innerHTML = "";
+
+      ROWS.forEach(row => {
+        state[row.key] = {
+          placedCount: 0,
+          slotsFilled: Array(row.word.length).fill(false),
+          slovoPlayed: false,
+          complete: false
+        };
+
+        // LEFT (letters) — один рядок гри = одна ліва клітинка
+        const left = document.createElement("div");
+        left.className = "cell left";
+
+        const lettersWrap = document.createElement("div");
+        lettersWrap.className = "letters";
+        lettersWrap.dataset.row = row.key;
+
+        const tokens = shuffle(row.letterSounds.map((ls, idx) => ({
+          tokenId: `${row.key}_t${idx}`,
+          ch: ls.ch,
+          audio: ls.audio,
+          rowKey: row.key
+        })));
+
+        tokens.forEach(tok => {
+          const el = document.createElement("div");
+          el.className = "letter";
+          el.textContent = tok.ch;
+          el.setAttribute("draggable","true");
+          el.dataset.tokenId = tok.tokenId;
+          el.dataset.rowKey = tok.rowKey;
+          el.dataset.ch = tok.ch;
+          el.dataset.audio = tok.audio;
+
+          // клік = звук букви
+          el.addEventListener("click", () => {
+            if(el.classList.contains("locked")) return;
+            playAudioById(tok.audio);
+          });
+
+          el.addEventListener("dragstart", (e) => {
+            if(el.classList.contains("locked")) { e.preventDefault(); return; }
+            dragTokenId = tok.tokenId;
+            el.classList.add("dragging");
+            playAudioById(tok.audio);
+            e.dataTransfer.setData("text/plain", tok.tokenId);
+            e.dataTransfer.effectAllowed = "move";
+          });
+
+          el.addEventListener("dragend", () => {
+            el.classList.remove("dragging");
+            dragTokenId = null;
+            clearHighlights();
+          });
+
+          lettersWrap.appendChild(el);
+        });
+
+        left.appendChild(lettersWrap);
+
+        // RIGHT (image + targets + belowBar)
+        const right = document.createElement("div");
+        right.className = "cell right";
+
+        const img = document.createElement("img");
+        img.className = "pic";
+        img.alt = "Музичний інструмент";
+        img.src = row.imageSrc;
+
+        const targetsWrap = document.createElement("div");
+        targetsWrap.className = "targetsWrap";
+
+        const targets = document.createElement("div");
+        targets.className = "targets";
+
+        row.word.forEach((expectedCh, i) => {
+          const slot = document.createElement("div");
+          slot.className = "slot";
+          slot.dataset.row = row.key;
+          slot.dataset.index = String(i);
+          slot.dataset.expected = expectedCh;
+
+          slot.addEventListener("dragover", (e) => {
+            const st = state[row.key];
+            if(st.complete) return;
+            if(!dragTokenId) return;
+
+            e.preventDefault();
+
+            const tokenEl = document.querySelector(`.letter[data-token-id="${dragTokenId}"]`);
+            if(!tokenEl) return;
+
+            const tokenRow = tokenEl.dataset.rowKey;
+            const tokenCh  = tokenEl.dataset.ch;
+
+            const ok = (tokenRow === row.key) && isNextSlot(row.key, i) && (tokenCh === expectedCh) && !slot.classList.contains("filled");
+
+            slot.classList.toggle("dropOk", ok);
+            slot.classList.toggle("dropBad", !ok);
+          });
+
+          slot.addEventListener("dragleave", () => {
+            slot.classList.remove("dropOk","dropBad");
+          });
+
+          slot.addEventListener("drop", (e) => {
+            e.preventDefault();
+            slot.classList.remove("dropOk","dropBad");
+
+            const tokenId = e.dataTransfer.getData("text/plain") || dragTokenId;
+            const tokenEl = document.querySelector(`.letter[data-token-id="${tokenId}"]`);
+            if(!tokenEl) return;
+
+            const st = state[row.key];
+            if(st.complete) return;
+
+            const tokenRow = tokenEl.dataset.rowKey;
+            const tokenCh  = tokenEl.dataset.ch;
+
+            const ok = (tokenRow === row.key) && isNextSlot(row.key, i) && (tokenCh === expectedCh) && !slot.classList.contains("filled");
+
+            if(!ok){
+              tokenEl.classList.add("shake");
+              setTimeout(()=>tokenEl.classList.remove("shake"), 260);
+              return;
+            }
+
+            slot.classList.add("filled");
+            slot.appendChild(tokenEl);
+            tokenEl.classList.add("locked");
+            tokenEl.setAttribute("draggable","false");
+
+            st.slotsFilled[i] = true;
+            st.placedCount++;
+
+            if(st.placedCount === row.word.length){
+              st.complete = true;
+              showBelowBar(row.key);
+            }
+          });
+
+          targets.appendChild(slot);
+        });
+
+        // belowBar під кружечками
+        const belowBar = document.createElement("div");
+        belowBar.className = "belowBar";
+        belowBar.id = `below_${row.key}`;
+
+        targetsWrap.appendChild(targets);
+        targetsWrap.appendChild(belowBar);
+
+        right.appendChild(img);
+        right.appendChild(targetsWrap);
+
+        grid.appendChild(left);
+        grid.appendChild(right);
+      });
+    }
+
+    function showBelowBar(rowKey){
+      const row = ROWS.find(r => r.key === rowKey);
+      const st  = state[rowKey];
+      const below = document.getElementById(`below_${rowKey}`);
+      below.innerHTML = "";
+
+      const soundBtn = document.createElement("button");
+      soundBtn.className = "soundIcon";
+      soundBtn.type = "button";
+      soundBtn.title = "Прослухати слово";
+      soundBtn.textContent = "🔊"; // ✅ лише значок
+
+      const check = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      check.setAttribute("viewBox", "0 0 24 24");
+      check.classList.add("check");
+      check.innerHTML = `<path fill="${getComputedStyle(document.documentElement).getPropertyValue('--good') || '#1fa84a'}"
+        d="M9.0 16.2l-3.5-3.5L4 14.2l5 5L20 8.2 18.6 6.8z"/>`;
+
+      soundBtn.addEventListener("click", () => {
+        playAudioById(row.slovoAudio);
+        st.slovoPlayed = true;
+        check.classList.add("show");
+        soundBtn.disabled = true;
+
+        if(allRowsDoneAndSpoken()){
+          document.getElementById("finalBar").classList.add("show");
+        }
+      });
+
+      below.appendChild(soundBtn);
+      below.appendChild(check);
+    }
+
+    function resetGame(){
+      document.getElementById("finalBar").classList.remove("show");
+      dragTokenId = null;
+      build();
+    }
+
+    document.getElementById("zavdahja").addEventListener("click", () => playAudioById("taskAudio"));
+    document.getElementById("resetTop").addEventListener("click", resetGame);
+    document.getElementById("resetBottom").addEventListener("click", resetGame);
+    document.getElementById("winBtn").addEventListener("click", () => alert("Це — успіх!"));
+
+    document.getElementById("taskText").textContent = TASK_TEXT;
+    build();
+  </script>
+</body>
+</html>
